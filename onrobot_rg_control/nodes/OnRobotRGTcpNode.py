@@ -4,8 +4,8 @@ import rospy
 import onrobot_rg_control.baseOnRobotRG
 import onrobot_rg_modbus_tcp.comModbusTcp
 from std_srvs.srv import Trigger, TriggerResponse
-from onrobot_rg_control.msg import OnRobotRGInput
-from onrobot_rg_control.msg import OnRobotRGOutput
+from onrobot_rg_control.msg import OnRobotRGInputStamped
+from onrobot_rg_control.msg import OnRobotRGOutputStamped
 
 
 class OnRobotRGTcp:
@@ -14,7 +14,7 @@ class OnRobotRGTcp:
         Attributes:
             gripper (onrobot_rg_control.baseOnRobotRG.onrobotbaseRG):
                 instance of onrobotbaseRG used for the connection establishment
-            pub (rospy.Publisher): the publisher for OnRobotRGInput
+            pub (rospy.Publisher): the publisher for OnRobotRGInputStamped
 
             restartPowerCycle:
                 Restarts the power cycle of the gripper.
@@ -32,13 +32,13 @@ class OnRobotRGTcp:
         # Connecting to the ip address received as an argument
         self.gripper.client.connectToDevice(ip, port, changer_addr)
 
-        # The Gripper status is published on the topic 'OnRobotRGInput'
+        # The Gripper status is published on the topic 'OnRobotRGInputStamped'
         self.pub = rospy.Publisher(
-            'OnRobotRGInput', OnRobotRGInput, queue_size=1)
+            'OnRobotRGInputStamped', OnRobotRGInputStamped, queue_size=1)
 
-        # The Gripper command is received from the topic 'OnRobotRGOutput'
-        rospy.Subscriber('OnRobotRGOutput',
-                         OnRobotRGOutput,
+        # The Gripper command is received from the topic 'OnRobotRGOutputStamped'
+        rospy.Subscriber('OnRobotRGOutputStamped',
+                         OnRobotRGOutputStamped,
                          self.gripper.refreshCommand)
 
         # The restarting service

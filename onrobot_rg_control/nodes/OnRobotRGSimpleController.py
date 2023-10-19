@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
-from onrobot_rg_control.msg import OnRobotRGOutput
+from onrobot_rg_control.msg import OnRobotRGOutputStamped
 
 
 def genCommand(char, command):
@@ -9,7 +9,7 @@ def genCommand(char, command):
 
         Args:
             char (str): set command service request message
-            command (OnRobotRGOutput): command to be sent
+            command (OnRobotRGOutputStamped): command to be sent
 
         Returns:
             command: command message with parameters set
@@ -50,7 +50,7 @@ def genCommand(char, command):
             command.rCTR = 16
         except ValueError:
             pass
-
+    command.header.stamp = rospy.get_rostime()
     return command
 
 
@@ -58,7 +58,7 @@ def askForCommand(command):
     """ Asks the user for a command to send to the gripper.
 
         Args:
-            command (OnRobotRGOutput): command to be sent
+            command (OnRobotRGOutputStamped): command to be sent
 
         Returns:
             input(strAskForCommand) (str): input command strings
@@ -85,7 +85,7 @@ def askForCommand(command):
 
 def publisher():
     """ Main loop which requests new commands and
-        publish them on the OnRobotRGOutput topic.
+        publish them on the OnRobotRGOutputStamped topic.
     """
 
     rospy.init_node(
@@ -93,8 +93,8 @@ def publisher():
         anonymous=True,
         log_level=rospy.DEBUG)
     pub = rospy.Publisher(
-        'OnRobotRGOutput', OnRobotRGOutput, queue_size=1)
-    command = OnRobotRGOutput()
+        'OnRobotRGOutputStamped', OnRobotRGOutputStamped, queue_size=1)
+    command = OnRobotRGOutputStamped()
 
     while not rospy.is_shutdown():
         command = genCommand(askForCommand(command), command)

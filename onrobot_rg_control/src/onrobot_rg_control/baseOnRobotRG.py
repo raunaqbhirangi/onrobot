@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
-from onrobot_rg_control.msg import OnRobotRGInput
+from onrobot_rg_control.msg import OnRobotRGInputStamped
 
 
 class onrobotbaseRG:
@@ -91,7 +91,7 @@ class onrobotbaseRG:
         self.client.restartPowerCycle()
 
     def getStatus(self):
-        """ Requests the gripper status and return OnRobotRGInput message.
+        """ Requests the gripper status and return OnRobotRGInputStamped message.
 
             Returns:
                 message (list[int]): message including commands to be sent
@@ -101,7 +101,9 @@ class onrobotbaseRG:
         status = self.client.getStatus()
 
         # Messaging to output
-        message = OnRobotRGInput()
+        message = OnRobotRGInputStamped()
+
+        message.header.stamp = rospy.get_rostime()
 
         # Assignning the values to their respective variables
         message.gFOF = status[0]

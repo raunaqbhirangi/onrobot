@@ -3,6 +3,7 @@ project(onrobot_rg_control)
 find_package(catkin REQUIRED COMPONENTS
   rospy
   std_srvs
+  std_msgs
   onrobot_rg_modbus_tcp
   message_generation
 )
@@ -11,6 +12,8 @@ add_message_files(
   FILES
   OnRobotRGInput.msg
   OnRobotRGOutput.msg
+  OnRobotRGInputStamped.msg
+  OnRobotRGOutputStamped.msg
 ) 
 
 add_service_files(
@@ -23,6 +26,7 @@ catkin_python_setup()
 generate_messages(
   DEPENDENCIES
   std_srvs
+  std_msgs
 )
 
 catkin_package(

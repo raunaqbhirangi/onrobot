@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
-from onrobot_rg_control.msg import OnRobotRGInput
+from onrobot_rg_control.msg import OnRobotRGInputStamped
 
 
 def printStatus(status):
@@ -11,11 +11,11 @@ def printStatus(status):
 
 
 def OnRobotRGStatusListener():
-    """ Initializes the node and subscribe to the OnRobotRGInput topic. """
+    """ Initializes the node and subscribe to the OnRobotRGInputStamped topic. """
 
     rospy.init_node(
         'OnRobotRGStatusListener', anonymous=True, log_level=rospy.DEBUG)
-    rospy.Subscriber("OnRobotRGInput", OnRobotRGInput, printStatus)
+    rospy.Subscriber("OnRobotRGInputStamped", OnRobotRGInputStamped, printStatus)
     rospy.spin()
 
 
