@@ -1,107 +1,100 @@
 #!/usr/bin/env python3
 
 import rospy
+from threading import Thread
 from onrobot_rg_control.msg import OnRobotRGOutputStamped
 
+class OnrobotController:
+    def __init__(self):
+        self.gtype = rospy.get_param("/onrobot/gripper", "rg2")
+        if self.gtype == 'rg2':
+            self.max_force = 400
+            self.max_width = 1100
+        elif self.gtype == 'rg6':
+            self.max_force = 1200
+            self.max_width = 1600
+        else:
+            rospy.signal_shutdown(
+                rospy.get_name() +
+                ": Select the gripper type from rg2 or rg6.")
+        rospy.init_node(
+            'OnRobotRGSimpleController',
+            anonymous=True,
+            log_level=rospy.DEBUG)
+        self.pub = rospy.Publisher(
+            'OnRobotRGOutputStamped', OnRobotRGOutputStamped, queue_size=1)
+        self.last_command = OnRobotRGOutputStamped()
+        self.genCommand("o")
+        self.pub_thread = Thread(target=self.publisher, args=())
+        self.pub_thread.start()
+        self.listener()
+        
 
-def genCommand(char, command):
-    """ Updates the command according to the input character.
+    def genCommand(self, char):
+        if char == 'c':
+            self.last_command.rGFR = 400
+            self.last_command.rGWD = 0
+            self.last_command.rCTR = 16
+        elif char == 'o':
+            self.last_command.rGFR = 400
+            self.last_command.rGWD = self.max_width
+            self.last_command.rCTR = 16
+        elif char == 'i':
+            self.last_command.rGFR += 25
+            self.last_command.rGFR = min(self.max_force, self.last_command.rGFR)
+            self.last_command.rCTR = 16
+        elif char == 'd':
+            self.last_command.rGFR -= 25
+            self.last_command.rGFR = max(0, self.last_command.rGFR)
+            self.last_command.rCTR = 16
+        else:
+            # If the self.last_command entered is a int, assign this value to rGWD
+            try:
+                self.last_command.rGFR = 400
+                self.last_command.rGWD = min(self.max_width, int(char))
+                self.last_command.rCTR = 16
+            except ValueError:
+                pass
+        # self.last_command.header.stamp = rospy.get_rostime()
 
-        Args:
-            char (str): set command service request message
-            command (OnRobotRGOutputStamped): command to be sent
+    def askForCommand(self):
+        """ Asks the user for a command to send to the gripper.
 
-        Returns:
-            command: command message with parameters set
-    """
+            Args:
+                command (OnRobotRGOutputStamped): command to be sent
 
-    if gtype == 'rg2':
-        max_force = 400
-        max_width = 1100
-    elif gtype == 'rg6':
-        max_force = 1200
-        max_width = 1600
-    else:
-        rospy.signal_shutdown(
-            rospy.get_name() +
-            ": Select the gripper type from rg2 or rg6.")
+            Returns:
+                input(strAskForCommand) (str): input command strings
+        """
 
-    if char == 'c':
-        command.rGFR = 400
-        command.rGWD = 0
-        command.rCTR = 16
-    elif char == 'o':
-        command.rGFR = 400
-        command.rGWD = max_width
-        command.rCTR = 16
-    elif char == 'i':
-        command.rGFR += 25
-        command.rGFR = min(max_force, command.rGFR)
-        command.rCTR = 16
-    elif char == 'd':
-        command.rGFR -= 25
-        command.rGFR = max(0, command.rGFR)
-        command.rCTR = 16
-    else:
-        # If the command entered is a int, assign this value to rGWD
-        try:
-            command.rGFR = 400
-            command.rGWD = min(max_width, int(char))
-            command.rCTR = 16
-        except ValueError:
-            pass
-    command.header.stamp = rospy.get_rostime()
-    return command
+        currentCommand = 'Simple OnRobot RG Controller\n-----\nCurrent command:'
+        currentCommand += ' rGFR = ' + str(self.last_command.rGFR)
+        currentCommand += ', rGWD = ' + str(self.last_command.rGWD)
+        currentCommand += ', rCTR = ' + str(self.last_command.rCTR)
 
+        rospy.loginfo(currentCommand)
 
-def askForCommand(command):
-    """ Asks the user for a command to send to the gripper.
+        strAskForCommand = '-----\nAvailable commands\n\n'
+        strAskForCommand += 'c: Close\n'
+        strAskForCommand += 'o: Open\n'
+        strAskForCommand += '(0 - max width): Go to that position\n'
+        strAskForCommand += 'i: Increase force\n'
+        strAskForCommand += 'd: Decrease force\n'
 
-        Args:
-            command (OnRobotRGOutputStamped): command to be sent
+        strAskForCommand += '-->'
 
-        Returns:
-            input(strAskForCommand) (str): input command strings
-    """
+        return input(strAskForCommand)
 
-    currentCommand = 'Simple OnRobot RG Controller\n-----\nCurrent command:'
-    currentCommand += ' rGFR = ' + str(command.rGFR)
-    currentCommand += ', rGWD = ' + str(command.rGWD)
-    currentCommand += ', rCTR = ' + str(command.rCTR)
+    def listener(self):
+        while not rospy.is_shutdown():
+            self.genCommand(self.askForCommand())
 
-    rospy.loginfo(currentCommand)
-
-    strAskForCommand = '-----\nAvailable commands\n\n'
-    strAskForCommand += 'c: Close\n'
-    strAskForCommand += 'o: Open\n'
-    strAskForCommand += '(0 - max width): Go to that position\n'
-    strAskForCommand += 'i: Increase force\n'
-    strAskForCommand += 'd: Decrease force\n'
-
-    strAskForCommand += '-->'
-
-    return input(strAskForCommand)
-
-
-def publisher():
-    """ Main loop which requests new commands and
-        publish them on the OnRobotRGOutputStamped topic.
-    """
-
-    rospy.init_node(
-        'OnRobotRGSimpleController',
-        anonymous=True,
-        log_level=rospy.DEBUG)
-    pub = rospy.Publisher(
-        'OnRobotRGOutputStamped', OnRobotRGOutputStamped, queue_size=1)
-    command = OnRobotRGOutputStamped()
-
-    while not rospy.is_shutdown():
-        command = genCommand(askForCommand(command), command)
-        pub.publish(command)
-        rospy.sleep(0.1)
+    def publisher(self):
+        while not rospy.is_shutdown():
+            self.last_command.header.stamp = rospy.get_rostime()
+            self.pub.publish(self.last_command)
+            rospy.sleep(0.1)
 
 
 if __name__ == '__main__':
-    gtype = rospy.get_param('/onrobot/gripper', 'rg6')
-    publisher()
+    OnrobotController()
