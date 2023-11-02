@@ -2,7 +2,7 @@
 
 import rospy
 from threading import Thread
-from onrobot_rg_control.msg import OnRobotRGOutputStamped
+from onrobot_rg_control.msg import OnRobotRGOutputStamped, OnRobotRGInputStamped
 
 class OnrobotController:
     def __init__(self):
@@ -21,37 +21,51 @@ class OnrobotController:
             'OnRobotRGSimpleController',
             anonymous=True,
             log_level=rospy.DEBUG)
+        
+        self._init_last_command()
         self.pub = rospy.Publisher(
             'OnRobotRGOutputStamped', OnRobotRGOutputStamped, queue_size=1)
-        self.last_command = OnRobotRGOutputStamped()
-        self.genCommand("o")
+        # self.genCommand("o")
         self.pub_thread = Thread(target=self.publisher, args=())
         self.pub_thread.start()
         self.listener()
         
+    def _init_last_command(self):
+        init_state = rospy.wait_for_message('OnRobotRGInputStamped', OnRobotRGInputStamped)
+        self.last_command = OnRobotRGOutputStamped()
+        self.last_command.rGFR = 400
+        self.last_command.rGWD = init_state.gWDF
+        self.last_command.rCTR = 16
 
-    def genCommand(self, char):
-        if char == 'c':
-            self.last_command.rGFR = 400
+    def genCommand(self, cmd):
+        if cmd == 'c':
+            # self.last_command.rGFR = 400
             self.last_command.rGWD = 0
             self.last_command.rCTR = 16
-        elif char == 'o':
-            self.last_command.rGFR = 400
+        elif cmd == 'o':
+            # self.last_command.rGFR = 400
             self.last_command.rGWD = self.max_width
             self.last_command.rCTR = 16
-        elif char == 'i':
+        elif cmd == 'i':
             self.last_command.rGFR += 25
             self.last_command.rGFR = min(self.max_force, self.last_command.rGFR)
             self.last_command.rCTR = 16
-        elif char == 'd':
+        elif cmd == 'd':
             self.last_command.rGFR -= 25
             self.last_command.rGFR = max(0, self.last_command.rGFR)
-            self.last_command.rCTR = 16
+            # self.last_command.rCTR = 16
+        elif cmd.startswith('f'):
+            try:
+                force_cmd = int(cmd[1:])
+                print(cmd, force_cmd)
+                self.last_command.rGFR = max(0, min(force_cmd, self.max_force))
+            except ValueError:
+                pass
         else:
             # If the self.last_command entered is a int, assign this value to rGWD
             try:
-                self.last_command.rGFR = 400
-                self.last_command.rGWD = min(self.max_width, int(char))
+                # self.last_command.rGFR = 400
+                self.last_command.rGWD = min(self.max_width, int(cmd))
                 self.last_command.rCTR = 16
             except ValueError:
                 pass
@@ -77,9 +91,10 @@ class OnrobotController:
         strAskForCommand = '-----\nAvailable commands\n\n'
         strAskForCommand += 'c: Close\n'
         strAskForCommand += 'o: Open\n'
-        strAskForCommand += '(0 - max width): Go to that position\n'
-        strAskForCommand += 'i: Increase force\n'
-        strAskForCommand += 'd: Decrease force\n'
+        strAskForCommand += '(0 - max width): Set position to value\n'
+        strAskForCommand += 'f(0-max force): Set force to value\n'
+        strAskForCommand += 'i: Increase force by 25\n'
+        strAskForCommand += 'd: Decrease force by 25\n'
 
         strAskForCommand += '-->'
 
