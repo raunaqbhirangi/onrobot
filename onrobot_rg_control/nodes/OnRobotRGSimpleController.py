@@ -25,7 +25,6 @@ class OnrobotController:
         self._init_last_command()
         self.pub = rospy.Publisher(
             'OnRobotRGOutputStamped', OnRobotRGOutputStamped, queue_size=1)
-        # self.genCommand("o")
         self.pub_thread = Thread(target=self.publisher, args=())
         self.pub_thread.start()
         self.listener()

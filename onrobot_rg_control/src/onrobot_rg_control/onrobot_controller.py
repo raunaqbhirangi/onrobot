@@ -1,8 +1,8 @@
 import numpy as np
 import rospy
-from onrobot_rg_control.msg import OnRobotRGInput
-from onrobot_rg_control.msg import OnRobotRGOutput
-
+from onrobot_rg_control.msg import OnRobotRGInputStamped
+from onrobot_rg_control.msg import OnRobotRGOutputStamped
+from threading import Thread
 
 '''
     Input message:
@@ -29,8 +29,8 @@ from onrobot_rg_control.msg import OnRobotRGOutput
             0x0010 - grip_w_offset
 '''
 
-ONROBOT_INPUT_TOPIC = '/OnRobotRGInput' 
-ONROBOT_OUTPUT_TOPIC = '/OnRobotRGOutput' 
+ONROBOT_INPUT_TOPIC = '/OnRobotRGInputStamped' 
+ONROBOT_OUTPUT_TOPIC = '/OnRobotRGOutputStamped' 
 
 # Maximum permitted values
 MAX_WIDTH = 1100
@@ -46,25 +46,34 @@ class OnrobotController:
             pass
         
         # TODO: Fix these topics
-        rospy.Subscriber(ONROBOT_INPUT_TOPIC, OnRobotRGInput, self._sub_callback_gripper_state)
+        rospy.Subscriber(ONROBOT_INPUT_TOPIC, OnRobotRGInputStamped, self._sub_callback_gripper_state)
 
-        self.gripper_comm_publisher = rospy.Publisher(ONROBOT_OUTPUT_TOPIC, OnRobotRGOutput, queue_size=-1)
+        self.gripper_comm_publisher = rospy.Publisher(ONROBOT_OUTPUT_TOPIC, OnRobotRGOutputStamped, queue_size=-1)
+        init_state = rospy.wait_for_message('/OnRobotRGInputStamped', OnRobotRGInputStamped)
+        self.command = OnRobotRGOutputStamped()
+        # TODO: Add option for setting different force values
+        self.command.rGFR = 400
+        self.command.rGWD = init_state.gWDF
+        self.command.rCTR = 16
 
-        self.current_gripper_state = DEFAULT_VAL
-        self.grav_comp = DEFAULT_VAL
-        self.cmd_joint_state = DEFAULT_VAL
+        self.pub_thread = Thread(target=self.publisher, args=())
+        self.pub_thread.start()
+
+        
+        self.current_gripper_state = init_state
+        # self.grav_comp = DEFAULT_VAL
+        # self.cmd_joint_state = DEFAULT_VAL
 
     def _sub_callback_gripper_state(self, data):
         self.current_gripper_state = data
 
-    def _sub_callback_cmd__joint_state(self, data):
+    def _sub_callback_cmd_joint_state(self, data):
         self.cmd_joint_state = data
     
     def gripper_width(self, desired_action=0, absolute=True):
         if self.current_gripper_state == DEFAULT_VAL:
             print('No gripper data received!')
             return
-
         current_state = self.current_gripper_state
 
         if absolute is True:
@@ -74,12 +83,7 @@ class OnrobotController:
 
         action = self._clip(desired_action, MAX_WIDTH)
 
-        command = OnRobotRGOutput()
-        command.rGFR = 400
-        command.rGWD = desired_width
-        command.rCTR = 16
-
-        self.gripper_comm_publisher.publish(command)
+        self.command.rGWD = int(action)
     
     def _clip(self, action, value):
         return np.clip(action, -value, value)
@@ -122,3 +126,9 @@ class OnrobotController:
                 + [cmd_joint_position]
                 + [cmd_joint_torque]
                 )
+
+    def publisher(self):
+        while not rospy.is_shutdown():
+            self.command.header.stamp = rospy.get_rostime()
+            self.gripper_comm_publisher.publish(self.command)
+            rospy.sleep(0.1)

@@ -4,12 +4,14 @@
   <arg name="gripper"         default="rg6"/>
   <arg name="changer_addr"    default="65"/>
   <arg name="dummy"           default="false"/>
+  <arg name="tips_width"      default="0"/>
 
   <param name="/onrobot/ip"               value="$(arg ip)" />
   <param name="/onrobot/port"             value="$(arg port)" />
   <param name="/onrobot/gripper"          value="$(arg gripper)" />
   <param name="/onrobot/changer_addr"     value="$(arg changer_addr)" />
   <param name="/onrobot/dummy"            value="$(arg dummy)" />
+  <param name="/onrobot/tips_width"       value="$(arg tips_width" />
 
   <node name="OnRobotRGStatusListener"
         pkg="onrobot_rg_control"
