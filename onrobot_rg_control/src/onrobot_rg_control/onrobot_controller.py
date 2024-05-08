@@ -1,8 +1,9 @@
+import signal
 import numpy as np
 import rospy
 from onrobot_rg_control.msg import OnRobotRGInputStamped
 from onrobot_rg_control.msg import OnRobotRGOutputStamped
-from threading import Thread
+from threading import Thread, Event
 
 '''
     Input message:
@@ -39,7 +40,7 @@ MAX_TORQUE = 400
 DEFAULT_VAL = None
 
 class OnrobotController:
-    def __init__(self):
+    def __init__(self, record_type):
         try:
             rospy.init_node("onrobot_gripper_node")
         except:
@@ -55,9 +56,9 @@ class OnrobotController:
         self.command.rGFR = 400
         self.command.rGWD = init_state.gWDF
         self.command.rCTR = 16
-
-        self.pub_thread = Thread(target=self.publisher, args=())
-        self.pub_thread.start()
+        if record_type is None:
+            self.pub_thread = Thread(target=self.publisher, args=())
+            self.pub_thread.start()
 
         
         self.current_gripper_state = init_state
